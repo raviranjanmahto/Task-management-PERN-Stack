@@ -17,7 +17,7 @@ const pool = new Pool({
 // Use pool.query() to execute queries
 pool.query('SELECT NOW() AS "theTime"', (err, result) => {
   if (err) {
-    return console.error("error running query", err);
+    return console.error("Error connecting to database", err);
   }
   console.log("Connected to database", result.rows[0].theTime);
   // >> output: 2024-02-13T15:43:49.402Z

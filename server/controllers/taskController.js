@@ -29,28 +29,19 @@ exports.postTask = catchAsync(async (req, res, next) => {
 });
 
 exports.updateTask = catchAsync(async (req, res, next) => {
-  const tasks = await pool.query(
-    `SELECT * FROM tasks WHERE id = ${req.params.id}`
+  const { id } = req.params;
+  const { title, description, completed } = req.body;
+  if (!title || !description)
+    return next(new AppError(`All fields are required`, 400));
+
+  const { rows } = await pool.query(
+    "UPDATE tasks SET title = $1, description = $2, completed = $3 WHERE id = $4 RETURNING *",
+    [title, description, completed, id]
   );
-  if (tasks.rows.length === 0)
-    return next(new AppError(`Invalid, id not exist: ${req.params.id}`, 404));
+  if (rows.length === 0)
+    return next(new AppError(`Invalid, id not exist: ${id}`, 404));
 
-  // Construct the SET clause dynamically based on the fields in req.body
-  const setClauses = Object.keys(req.body)
-    .filter(key => ["title", "description", "completed"].includes(key)) // Ensure only allowed fields are updated
-    .map((key, index) => `${key} = $${index + 1}`)
-    .join(", ");
-
-  const values = Object.values(req.body);
-
-  // Add the id parameter for the WHERE clause
-  values.push(req.params.id);
-
-  // Construct the UPDATE query dynamically with the SET clause and parameters
-  const query = `UPDATE tasks SET ${setClauses} WHERE id = $${values.length} RETURNING *`;
-
-  const updateTask = await pool.query(query, values);
-  res.status(200).json({ status: "success", task: updateTask.rows[0] });
+  res.status(200).json({ status: "success", task: rows[0] });
 });
 
 exports.deleteTask = catchAsync(async (req, res, next) => {
