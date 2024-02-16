@@ -16,13 +16,16 @@ import {
 import { Edit, Delete } from "@mui/icons-material";
 import { useDeleteTaskMutation, useGetTaskQuery } from "../state/api";
 import { Link } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import { setALert } from "../state/globalSlice";
 
 function TaskList() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [taskToDeleteId, setTaskToDeleteId] = useState(null);
+  const dispatch = useDispatch();
 
   const { data, isLoading } = useGetTaskQuery();
-  const [deleteTask] = useDeleteTaskMutation();
+  const [deleteTask, { isLoading: loading }] = useDeleteTaskMutation();
   const isNonMediumScreens = useMediaQuery("(min-width: 900px)");
 
   const handleDeleteClick = taskId => {
@@ -31,9 +34,36 @@ function TaskList() {
   };
 
   const handleDeleteConfirm = async () => {
-    await deleteTask(taskToDeleteId);
+    try {
+      const result = await deleteTask(taskToDeleteId);
 
-    setDeleteDialogOpen(false);
+      if (result.error) {
+        // Handle error if the mutation was unsuccessful
+        dispatch(
+          setALert({
+            alertMessage: result.error.data.message,
+            alertSeverity: "error",
+          })
+        );
+      } else {
+        // Handle success if the mutation was successful
+        dispatch(
+          setALert({
+            alertMessage: "Task deleted successfully",
+            alertSeverity: "success",
+          })
+        );
+        setDeleteDialogOpen(false);
+      }
+    } catch (error) {
+      // Handle any unexpected errors
+      dispatch(
+        setALert({
+          alertMessage: "An error occurred while deleting the task.",
+          alertSeverity: "error",
+        })
+      );
+    }
   };
 
   const handleDeleteCancel = () => {
@@ -45,7 +75,6 @@ function TaskList() {
       maxWidth='md'
       sx={{
         display: "grid",
-        // gridTemplateColumns: "repeat(2,1fr)",
         gridTemplateColumns: isNonMediumScreens
           ? "repeat(2,1fr)"
           : "repeat(1,1fr)",
@@ -104,8 +133,12 @@ function TaskList() {
             </DialogContent>
             <DialogActions>
               <Button onClick={handleDeleteCancel}>Cancel</Button>
-              <Button onClick={handleDeleteConfirm} color='secondary'>
-                Delete
+              <Button
+                onClick={handleDeleteConfirm}
+                color='secondary'
+                disabled={loading}
+              >
+                {!loading ? "Delete" : "Deleting..."}
               </Button>
             </DialogActions>
           </Dialog>

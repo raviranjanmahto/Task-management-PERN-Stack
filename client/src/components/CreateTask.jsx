@@ -1,4 +1,3 @@
-import { useState } from "react";
 import {
   TextField,
   Checkbox,
@@ -6,44 +5,61 @@ import {
   FormControlLabel,
   Container,
   Grid,
-  Snackbar,
-  Alert,
 } from "@mui/material";
 import { usePostTaskMutation } from "../state/api";
 import { useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { setALert, setFields } from "../state/globalSlice";
 
 function CreateTask() {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [completed, setCompleted] = useState(false);
-
-  const [createTask, { isSuccess, isUninitialized, error, isError }] =
-    usePostTaskMutation({
-      title,
-      description,
-      completed,
-    });
-
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { title, description, completed } = useSelector(state => state.global);
 
-  const handleTitleChange = event => {
-    setTitle(event.target.value);
+  const [createTask, { isLoading }] = usePostTaskMutation();
+
+  const handleChange = event => {
+    const { name, value } = event.target;
+    dispatch(
+      setFields({
+        title: name === "title" ? value : undefined,
+        description: name === "description" ? value : undefined,
+        completed: name === "completed" ? value : false,
+      })
+    );
   };
 
-  const handleDescriptionChange = event => {
-    setDescription(event.target.value);
-  };
-
-  const handleCompletedChange = event => {
-    setCompleted(event.target.checked);
-  };
-
-  const handleSubmit = event => {
+  const handleSubmit = async event => {
     event.preventDefault();
-    createTask({ title, description, completed });
-    setTimeout(() => {
-      navigate("/");
-    }, 2000);
+    try {
+      const result = await createTask({ title, description, completed });
+      if (result.error) {
+        // Handle error if the mutation was unsuccessful
+        dispatch(
+          setALert({
+            alertMessage: result.error.data.message,
+            alertSeverity: "error",
+          })
+        );
+      } else {
+        // Handle success if the mutation was successful
+        dispatch(
+          setALert({
+            alertMessage: "Task created successfully",
+            alertSeverity: "success",
+          })
+        );
+        navigate("/");
+      }
+    } catch (error) {
+      // Handle any unexpected errors
+      dispatch(
+        setALert({
+          alertMessage: "An error occurred while creating the task.",
+          alertSeverity: "error",
+        })
+      );
+    }
   };
 
   return (
@@ -55,9 +71,10 @@ function CreateTask() {
               fullWidth
               label='Title'
               variant='outlined'
-              value={title}
-              onChange={handleTitleChange}
+              name='title'
+              onChange={handleChange}
               required
+              autoFocus
             />
           </Grid>
           <Grid item xs={12}>
@@ -67,19 +84,14 @@ function CreateTask() {
               variant='outlined'
               multiline
               rows={4}
-              value={description}
-              onChange={handleDescriptionChange}
+              name='description'
+              onChange={handleChange}
               required
             />
           </Grid>
           <Grid item xs={12}>
             <FormControlLabel
-              control={
-                <Checkbox
-                  checked={completed}
-                  onChange={handleCompletedChange}
-                />
-              }
+              control={<Checkbox name='completed' onChange={handleChange} />}
               label='Completed'
             />
           </Grid>
@@ -88,24 +100,13 @@ function CreateTask() {
               type='submit'
               variant='contained'
               color='primary'
-              disabled={!isUninitialized}
+              disabled={isLoading}
             >
-              {!isUninitialized ? "Adding Task, Please wait..." : "Add Task"}
+              {isLoading ? "Adding Task, Please wait..." : "Add Task"}
             </Button>
           </Grid>
         </Grid>
       </form>
-      <Snackbar open={isSuccess} autoHideDuration={6000}>
-        <Alert severity='success' onClose={() => {}}>
-          Task created successfully!
-        </Alert>
-      </Snackbar>
-      <Snackbar open={isError} autoHideDuration={6000}>
-        <Alert severity='error' onClose={() => {}}>
-          {error && error?.data?.message}
-          {/* Error creating task. Please try again. */}
-        </Alert>
-      </Snackbar>
     </Container>
   );
 }

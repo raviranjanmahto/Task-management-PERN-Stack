@@ -8,49 +8,62 @@ import {
   CircularProgress,
 } from "@mui/material";
 import { useNavigate, useParams } from "react-router-dom";
-import { useGetATaskQuery, usePatchTaskMutation } from "../state/api";
-import { useEffect, useState } from "react";
+import { useGetATaskQuery, usePutTaskMutation } from "../state/api";
+import { useDispatch } from "react-redux";
+import { setALert } from "../state/globalSlice";
 
 function EditTaskManager() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { data, isLoading, refetch } = useGetATaskQuery(id);
-  const [onSave] = usePatchTaskMutation();
+  const { data, refetch } = useGetATaskQuery(id);
+  const [onSave, { isLoading }] = usePutTaskMutation();
+  const dispatch = useDispatch();
 
-  const [title, setTitle] = useState(undefined);
-  const [description, setDescription] = useState(undefined);
-  const [completed, setCompleted] = useState(undefined);
+  const handleSave = async event => {
+    event.preventDefault();
+    try {
+      const { title, description, completed } = event.target.elements;
 
-  useEffect(() => {
-    if (!isLoading) {
-      setTitle(data?.task?.title);
-      setDescription(data?.task?.description);
-      setCompleted(data?.task?.completed);
+      const result = await onSave({
+        title: title.value,
+        description: description.value,
+        completed: completed.checked,
+        id,
+      });
+
+      if (result.error) {
+        // Handle error if the mutation was unsuccessful
+        dispatch(
+          setALert({
+            alertMessage: result.error.data.message,
+            alertSeverity: "error",
+          })
+        );
+      } else {
+        // Handle success if the mutation was successful
+        dispatch(
+          setALert({
+            alertMessage: "Task updated successfully",
+            alertSeverity: "success",
+          })
+        );
+        navigate("/");
+        refetch();
+      }
+    } catch (error) {
+      // Handle any unexpected errors
+      dispatch(
+        setALert({
+          alertMessage: "An error occurred while updating the task.",
+          alertSeverity: "error",
+        })
+      );
     }
-  }, [data, isLoading]);
-
-  const handleTitleChange = event => {
-    setTitle(event.target.value);
-  };
-
-  const handleDescriptionChange = event => {
-    setDescription(event.target.value);
-  };
-
-  const handleCompletedChange = event => {
-    setCompleted(event.target.checked);
-  };
-
-  const handleSave = e => {
-    e.preventDefault();
-    onSave({ title, description, completed, id });
-    refetch();
-    navigate("/");
   };
 
   return (
     <Container maxWidth='sm' sx={{ padding: "2rem" }}>
-      {title === undefined ? (
+      {data === undefined ? (
         <Grid container justifyContent='center'>
           <CircularProgress />
         </Grid>
@@ -62,8 +75,8 @@ function EditTaskManager() {
                 fullWidth
                 label='Title'
                 variant='outlined'
-                value={title}
-                onChange={handleTitleChange}
+                defaultValue={data && data.task.title}
+                name='title'
                 required
               />
             </Grid>
@@ -74,8 +87,8 @@ function EditTaskManager() {
                 variant='outlined'
                 multiline
                 rows={4}
-                value={description}
-                onChange={handleDescriptionChange}
+                defaultValue={data && data.task.description}
+                name='description'
                 required
               />
             </Grid>
@@ -83,8 +96,8 @@ function EditTaskManager() {
               <FormControlLabel
                 control={
                   <Checkbox
-                    checked={completed}
-                    onChange={handleCompletedChange}
+                    name='completed'
+                    defaultChecked={data && data.task.completed}
                   />
                 }
                 label='Completed'
@@ -106,8 +119,9 @@ function EditTaskManager() {
                 variant='contained'
                 color='primary'
                 fullWidth
+                disabled={isLoading}
               >
-                Save
+                {!isLoading ? "Save" : "Saving..."}
               </Button>
             </Grid>
           </Grid>

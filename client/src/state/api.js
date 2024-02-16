@@ -3,7 +3,7 @@ import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 export const api = createApi({
   baseQuery: fetchBaseQuery({ baseUrl: `api/v1` }),
   reducerPath: "api",
-  tagTypes: ["GetTasks", "GetATask", "PostTasks", "PatchTasks", "DeleteTasks"],
+  tagTypes: ["GetTasks", "GetATask", "PostTasks", "PutTasks", "DeleteTasks"],
   endpoints: builder => ({
     // GET ALL TASKS
     getTask: builder.query({
@@ -30,15 +30,15 @@ export const api = createApi({
     }),
 
     // UPDATE TASKS
-    patchTask: builder.mutation({
+    putTask: builder.mutation({
       query: ({ title, description, completed, id }) => ({
         url: `tasks/update/${id}`,
-        method: "PATCH",
+        method: "PUT",
         body: { title, description, completed },
       }),
       cachePolicy: "no-cache",
 
-      providesTags: ["PatchTasks"],
+      providesTags: ["PutTasks"],
       invalidatesTags: ["GetTasks"],
     }),
 
@@ -58,6 +58,6 @@ export const {
   useGetTaskQuery,
   useGetATaskQuery,
   usePostTaskMutation,
-  usePatchTaskMutation,
+  usePutTaskMutation,
   useDeleteTaskMutation,
 } = api;
